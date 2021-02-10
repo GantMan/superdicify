@@ -9,36 +9,68 @@
       const numDice = 19
       const preSize = numDice * 10
 
+      const diceTensors = diceData.map((dt) => tf.tensor(dt))
+      const patchStack = []
+      let answerIndices
+      let originalGroup
+
       const runData = async (aTensor) => {
         const resized = tf.image.resizeNearestNeighbor(aTensor, [
           preSize,
           preSize,
         ])
         const cutSize = numDice
-        // return tensor to show
         const heightCuts = tf.split(resized, cutSize)
         const grid = heightCuts.map((sliver) => tf.split(sliver, cutSize, 1))
 
-        return grid
-      }
 
-      // helper method for visualizing
-      const showOne = (im, id = 'display') => {
-        const can = document.getElementById(id)
-        tf.browser.toPixels(im, can)
-      }
-
-      const figureResults = (model, tGrid) => {
-        tf.tidy(() => {
-          const reGroup = []
-          const patchStack = []
-          const diceTensors = diceData.map((dt) => tf.tensor(dt))
-
-          tGrid.forEach((row) => {
+        grid.forEach((row) => {
             patchStack.push(
               tf.image.resizeNearestNeighbor(tf.stack(row), [12, 12])
             )
           })
+
+        tf.dispose(grid)
+      }
+
+      // helper method for visualizing
+      const showOne = async (im, id = 'display') => {
+        const can = document.getElementById(id)
+        await tf.browser.toPixels(im, can)
+      }
+
+      const buildDiceImage = async (config = {}) => {
+        const tColumns = []
+        for (let y = 0; y < numDice; y++) {
+          const tRow = []
+          const rRow = []
+          for (let x = 0; x < numDice; x++) {
+            const curIndex = y * numDice + x
+            tRow.push(diceTensors[answerIndices[curIndex]])
+            if ((config.xdie - 1 === x) && (config.ydie - 1 === y)) {
+              const selectedTensor = tf.tensor(originalGroup[curIndex])
+              showOne(selectedTensor, 'selected')
+              showOne(selectedTensor, 'overlay1')
+              showOne(diceTensors[answerIndices[curIndex]], 'predicted')
+              showOne(diceTensors[answerIndices[curIndex]], 'overlay2')
+              selectedTensor.dispose()
+            }
+            // vertical lines
+            tRow.push(tf.zeros([12, 1]))
+          }
+          const oneRow = tf.concat(tRow, 1)
+          tColumns.push(oneRow)
+          // horizontal lines
+          tColumns.push(tf.zeros([1, oneRow.shape[1]]))
+        }    
+
+        const diceConstruct = tf.concat(tColumns)    
+        await showOne(diceConstruct)
+      }
+
+      const figureResults = (model) => {
+        tf.tidy(() => {
+          const reGroup = []
 
           // Let the Model find the answers
           const imageGroup = tf.concat(patchStack)
@@ -46,10 +78,8 @@
           const answers = model.predict(imageGroup)
           console.log('Predicted shape ', answers.shape)
           const { indices } = tf.topk(answers)
-          const answerIndices = indices.dataSync()
-          const originalGroup = imageGroup.div(255).arraySync()
-
-          // This is the issue  https://bit.ly/2KsOrm5
+          answerIndices = indices.dataSync()
+          originalGroup = imageGroup.div(255).arraySync()
 
           const tColumns = []
           for (let y = 0; y < numDice; y++) {
@@ -57,32 +87,22 @@
             const rRow = []
             for (let x = 0; x < numDice; x++) {
               const curIndex = y * numDice + x
-              tRow.push(diceTensors[answerIndices[curIndex]])
-              // vertical lines
-              tRow.push(tf.zeros([12, 1]))
-
               rRow.push(originalGroup[curIndex])
               rRow.push(tf.zeros([12, 1, 1]))
             }
-            const oneRow = tf.concat(tRow, 1)
-            tColumns.push(oneRow)
-            // horizontal lines
-            tColumns.push(tf.zeros([1, oneRow.shape[1]]))
-
             const regroupRow = tf.concat(rRow, 1)
             reGroup.push(regroupRow)
-            reGroup.push(tf.zeros([1, oneRow.shape[1], 1]))
+            reGroup.push(tf.zeros([1, regroupRow.shape[1], 1]))
           }
 
-          const diceConstruct = tf.concat(tColumns)
+          buildDiceImage()
           // image reconstruct
           const reconstructed = tf.concat(reGroup) // regroup
-          showOne(diceConstruct)
           showOne(reconstructed, 'regroup')
         })
       }
 
-      const identifySpot = (event) => {
+      const identifySpot = async (event) => {
         const canvas = document.getElementById('display')
         const xspot = event.pageX - canvas.offsetLeft
         const yspot = event.pageY - canvas.offsetTop
@@ -97,7 +117,19 @@
           ydie++
         }
 
+        
         console.log(xdie, ydie)
+        await buildDiceImage({xdie, ydie})
+        const can = document.getElementById('display')
+        const ctx = can.getContext('2d')
+        const canvBlockSize = 13
+        const xblockPos = (xdie - 1) * canvBlockSize - .5
+        const yblockPos = (ydie - 1) * canvBlockSize - .5
+        ctx.beginPath();
+        ctx.lineWidth = "2";
+        ctx.strokeStyle = "#ff0000ff";
+        ctx.rect(xblockPos, yblockPos, canvBlockSize, canvBlockSize);
+        ctx.stroke();
       }
 
       const doStuff = async () => {
@@ -112,15 +144,14 @@
         img.src = imgURL
         img.onload = async () => {
           const imgTensor = tf.browser.fromPixels(img, 1)
-          const grid = await runData(imgTensor)
-          figureResults(dModel, grid)
+          await runData(imgTensor)
+          figureResults(dModel)
           document.getElementById('app').innerHTML = `
             <h2>Dicify This</h2>
             <img src="${imgURL}" style="max-width: 100vw;">
           `
 
           tf.dispose([imgTensor, dModel])
-          tf.dispose(grid)
         }
 
         const canvas = document.getElementById('display')
@@ -142,6 +173,161 @@
       id="display"
       style="image-rendering: pixelated; width: 97%; opacity: 0.5; position: absolute;"
     ></canvas>    
-    <h2>AFTER</h2>
+    <h2
+      style="padding-top: 100vw;"
+    >Die Lab</h2>
+    <div style="display: flex;">
+      <div style="flex: 1;">
+        <h4>Selected</h4>
+        <canvas
+          id="selected"
+          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
+        >
+        </canvas>
+      </div>
+      <div style="flex: 1;">
+        <h4>Predicted</h4>
+        <canvas
+          id="predicted"
+          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
+        >
+        </canvas>
+      </div>  
+      <div style="flex: 1;">
+        <h4>Original Overlayed</h4>
+        <canvas
+          id="overlay1"
+          style="image-rendering: pixelated; width: 80px; border: 1px solid black; position: absolute; opacity: 0.5;"
+        ></canvas>
+        <canvas
+          id="overlay2"
+          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
+        ></canvas>     
+      </div>   
+      <div style="flex: 1;">
+        <h4>Override Color</h4>
+        Black/White
+      </div>        
+      <div style="flex: 1">
+        <h4>Override Pips</h4>
+        <div style="flex-direction: row;">
+          <p
+            id="one"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            text-align: center;"
+          >⚀</p>
+          <p
+            id = "two"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            text-align: center;"
+          >⚁</p>
+          <p
+            id = "twor"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            rotate: 90deg;
+            text-align: center;"
+          >⚁</p>       
+          <p
+            id = "three"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            text-align: center;"
+          >⚂</p> 
+          <p
+            id = "threer"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            rotate: 90deg;
+            text-align: center;"
+          >⚂</p> 
+          <p
+            id = "four"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            rotate: 90deg;
+            text-align: center;"
+          >⚃</p> 
+          <p
+            id = "five"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            rotate: 90deg;
+            text-align: center;"
+          >⚄</p> 
+          <p
+            id = "six"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            text-align: center;"
+          >⚅</p> 
+          <p
+            id = "sixr"
+            style="font-size: 2em;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            background: white;
+            color: black;
+            rotate: 90deg;
+            text-align: center;"
+          >⚅</p>                                                           
+        </div>
+      </div>   
+      <div style="flex: 1;">
+        <h4>New Overlayed</h4>
+        <canvas
+          id="overlay3"
+          style="image-rendering: pixelated; width: 80px; border: 1px solid black; position: absolute; opacity: 0.5;"
+        ></canvas>
+        <canvas
+          id="overlay4"
+          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
+        ></canvas>     
+      </div>       
+    </div>
   </body>
 </html>
