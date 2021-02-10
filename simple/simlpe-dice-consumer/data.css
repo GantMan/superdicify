@@ -1,0 +1,85 @@
+.overcanv {
+  image-rendering: pixelated;
+  width: 97%;
+  opacity: 0.5;
+  position: absolute;
+}
+
+.democanv {
+  image-rendering: pixelated;
+  width: 80px;
+  border: 1px solid black;
+}
+
+.half {
+  opacity: 0.5;
+}
+
+.labStart {
+  padding-top: 100vw;
+}
+
+.flexy {
+  display: flex;
+}
+
+.dicebox {
+  flex-direction: row;
+  background: white;
+  color: black;
+}
+
+.diveride {
+  font-size: 3em;
+  background: transparent;
+  display: inline-block;
+  height: 0.6em;
+  border: none;
+  outline: none;
+}
+
+.rot {
+  rotate: 90deg;
+  padding-bottom: 6px;
+}
+
+.diveride span {
+  display: inline-block;
+  position: relative;
+  top: -0.5em;
+}
+
+#blackBack {
+  background-color: black;
+  color: white;
+}
+
+#whiteBack {
+  background-color: white;
+  color: black;
+}
+
+#activeColor {
+  border: 1px dashed black;
+  width: 50%;
+}
+
+#pipdiv {
+  margin-right: 20px;
+}
+
+.light {
+  background-color: white;
+  color: black;
+  border-color: black;
+}
+
+.dark {
+  background-color: black;
+  color: white;
+  border-color: white;
+}
+
+.dark button {
+  color: white;
+}

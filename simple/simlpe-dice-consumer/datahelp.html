@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <link href="data.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
     <script type="module">
       import { DICE_DATA } from './dice.js'
@@ -8,6 +9,8 @@
       const imgURL = '/ir.png'
       const numDice = 19
       const preSize = numDice * 10
+      let primarySelect = 1
+      let overrideIndex = null
 
       const diceTensors = diceData.map((dt) => tf.tensor(dt))
       const patchStack = []
@@ -23,12 +26,11 @@
         const heightCuts = tf.split(resized, cutSize)
         const grid = heightCuts.map((sliver) => tf.split(sliver, cutSize, 1))
 
-
         grid.forEach((row) => {
-            patchStack.push(
-              tf.image.resizeNearestNeighbor(tf.stack(row), [12, 12])
-            )
-          })
+          patchStack.push(
+            tf.image.resizeNearestNeighbor(tf.stack(row), [12, 12])
+          )
+        })
 
         tf.dispose(grid)
       }
@@ -46,13 +48,22 @@
           const rRow = []
           for (let x = 0; x < numDice; x++) {
             const curIndex = y * numDice + x
-            tRow.push(diceTensors[answerIndices[curIndex]])
-            if ((config.xdie - 1 === x) && (config.ydie - 1 === y)) {
+            const curAnswer = answerIndices[curIndex]
+            tRow.push(diceTensors[curAnswer])
+            if (config.xdie - 1 === x && config.ydie - 1 === y) {
               const selectedTensor = tf.tensor(originalGroup[curIndex])
               showOne(selectedTensor, 'selected')
               showOne(selectedTensor, 'overlay1')
-              showOne(diceTensors[answerIndices[curIndex]], 'predicted')
-              showOne(diceTensors[answerIndices[curIndex]], 'overlay2')
+              showOne(selectedTensor, 'overlay3')
+              showOne(diceTensors[curAnswer], 'predicted')
+              showOne(diceTensors[curAnswer], 'overlay2')
+              showOne(diceTensors[curAnswer], 'overlay4')
+              if (curAnswer < 9) {
+                changePrimary(1)
+              } else {
+                changePrimary(0)
+              }
+
               selectedTensor.dispose()
             }
             // vertical lines
@@ -62,9 +73,9 @@
           tColumns.push(oneRow)
           // horizontal lines
           tColumns.push(tf.zeros([1, oneRow.shape[1]]))
-        }    
+        }
 
-        const diceConstruct = tf.concat(tColumns)    
+        const diceConstruct = tf.concat(tColumns)
         await showOne(diceConstruct)
       }
 
@@ -110,32 +121,31 @@
 
         let xdie = 0
         let ydie = 0
-        while (xspot > (xdie * blockSize)) {
+        while (xspot > xdie * blockSize) {
           xdie++
         }
-        while (yspot > (ydie * blockSize)) {
+        while (yspot > ydie * blockSize) {
           ydie++
         }
 
-        
         console.log(xdie, ydie)
-        await buildDiceImage({xdie, ydie})
+        await buildDiceImage({ xdie, ydie })
         const can = document.getElementById('display')
         const ctx = can.getContext('2d')
         const canvBlockSize = 13
-        const xblockPos = (xdie - 1) * canvBlockSize - .5
-        const yblockPos = (ydie - 1) * canvBlockSize - .5
-        ctx.beginPath();
-        ctx.lineWidth = "2";
-        ctx.strokeStyle = "#ff0000ff";
-        ctx.rect(xblockPos, yblockPos, canvBlockSize, canvBlockSize);
-        ctx.stroke();
+        const xblockPos = (xdie - 1) * canvBlockSize - 0.5
+        const yblockPos = (ydie - 1) * canvBlockSize - 0.5
+        ctx.beginPath()
+        ctx.lineWidth = '1'
+        ctx.strokeStyle = '#ff0000ff'
+        ctx.rect(xblockPos, yblockPos, canvBlockSize, canvBlockSize)
+        ctx.stroke()
       }
 
       const doStuff = async () => {
         // const modelPath =
         // 'https://s3.amazonaws.com/ir_public/ai/dice/dice-model.json'
-        const modelPath = '/dice-model/model.json'
+        const modelPath = '/dice-model-1/model.json'
         const dModel = await tf.loadLayersModel(modelPath)
 
         const img = new Image()
@@ -157,7 +167,6 @@
         const canvas = document.getElementById('display')
         canvas.addEventListener('mousedown', identifySpot, false)
       }
-
       doStuff()
     </script>
   </head>
@@ -165,169 +174,78 @@
     <h1>Dicify AI</h1>
     <div id="app"></div>
     <h2>Dicify Result:</h2>
-    <canvas
-      id="regroup"
-      style="image-rendering: pixelated; width: 97%; position: absolute"
-    ></canvas>
-    <canvas
-      id="display"
-      style="image-rendering: pixelated; width: 97%; opacity: 0.5; position: absolute;"
-    ></canvas>    
-    <h2
-      style="padding-top: 100vw;"
-    >Die Lab</h2>
-    <div style="display: flex;">
-      <div style="flex: 1;">
+    <canvas id="regroup" class="overcanv"></canvas>
+    <canvas id="display" class="overcanv half"></canvas>
+    <h2 class="labStart">Die Lab</h2>
+    <div class="flexy">
+      <div style="flex: 1">
         <h4>Selected</h4>
-        <canvas
-          id="selected"
-          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
-        >
-        </canvas>
+        <canvas id="selected" class="democanv"> </canvas>
       </div>
-      <div style="flex: 1;">
+      <div style="flex: 1">
         <h4>Predicted</h4>
-        <canvas
-          id="predicted"
-          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
-        >
-        </canvas>
-      </div>  
-      <div style="flex: 1;">
-        <h4>Original Overlayed</h4>
+        <canvas id="predicted" class="democanv"> </canvas>
+      </div>
+      <div style="flex: 1">
+        <h4>Overlayed</h4>
         <canvas
           id="overlay1"
-          style="image-rendering: pixelated; width: 80px; border: 1px solid black; position: absolute; opacity: 0.5;"
+          class="democanv"
+          style="position: absolute; opacity: 0.5"
         ></canvas>
-        <canvas
-          id="overlay2"
-          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
-        ></canvas>     
-      </div>   
-      <div style="flex: 1;">
-        <h4>Override Color</h4>
-        Black/White
-      </div>        
+        <canvas id="overlay2" class="democanv"></canvas>
+      </div>
       <div style="flex: 1">
-        <h4>Override Pips</h4>
-        <div style="flex-direction: row;">
-          <p
-            id="one"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            text-align: center;"
-          >⚀</p>
-          <p
-            id = "two"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            text-align: center;"
-          >⚁</p>
-          <p
-            id = "twor"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            rotate: 90deg;
-            text-align: center;"
-          >⚁</p>       
-          <p
-            id = "three"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            text-align: center;"
-          >⚂</p> 
-          <p
-            id = "threer"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            rotate: 90deg;
-            text-align: center;"
-          >⚂</p> 
-          <p
-            id = "four"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            rotate: 90deg;
-            text-align: center;"
-          >⚃</p> 
-          <p
-            id = "five"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            rotate: 90deg;
-            text-align: center;"
-          >⚄</p> 
-          <p
-            id = "six"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            text-align: center;"
-          >⚅</p> 
-          <p
-            id = "sixr"
-            style="font-size: 2em;
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            margin: 0;
-            background: white;
-            color: black;
-            rotate: 90deg;
-            text-align: center;"
-          >⚅</p>                                                           
+        <h4>Override Color</h4>
+        <button id="blackBack" onclick="changePrimary(0)">Black</button>
+        /
+        <button id="whiteBack" onclick="changePrimary(1)">White</button>
+        <div>
+          <p>Active</p>
+          <p id="activeColor">&nbsp;</p>
         </div>
-      </div>   
-      <div style="flex: 1;">
-        <h4>New Overlayed</h4>
+      </div>
+      <div id="pipdiv" style="flex: 1">
+        <h4>Override Pips</h4>
+        <div style="flex-direction: row">
+          <button id="one" class="diveride"><span>⚀</span></button>
+          <button id="two" class="diveride"><span>⚁</span></button>
+          <button id="twor" class="diveride"><span class="rot">⚁</span></button>
+          <button id="three" class="diveride"><span>⚂</span></button>
+          <button id="threer" class="diveride">
+            <span class="rot">⚂</span>
+          </button>
+          <button id="four" class="diveride"><span>⚃</span></button>
+          <button id="five" class="diveride"><span>⚄</span></button>
+          <button id="six" class="diveride"><span>⚅</span></button>
+          <button id="sixr" class="diveride"><span class="rot">⚅</span></button>
+        </div>
+      </div>
+      <div style="flex: 1">
+        <h4>Override Overlayed</h4>
         <canvas
           id="overlay3"
-          style="image-rendering: pixelated; width: 80px; border: 1px solid black; position: absolute; opacity: 0.5;"
+          class="democanv"
+          style="position: absolute; opacity: 0.5"
         ></canvas>
-        <canvas
-          id="overlay4"
-          style="image-rendering: pixelated; width: 80px; border: 1px solid black;"
-        ></canvas>     
-      </div>       
+        <canvas id="overlay4" class="democanv"></canvas>
+      </div>
     </div>
+    <script>
+      function changePrimary(newPrimary) {
+        primarySelect = newPrimary
+        const activeDiv = document.getElementById('activeColor')
+        const diceContainer = document.getElementById('pipdiv')
+        if (newPrimary === 1) {
+          activeDiv.className = 'light'
+          diceContainer.className = 'light'
+        } else {
+          activeDiv.className = 'dark'
+          diceContainer.className = 'dark'
+        }
+      }
+
+      function changePips(newPip) {}
+    </script>
   </body>
 </html>
