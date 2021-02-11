@@ -13,8 +13,6 @@
       const diceTensors = diceData.map((dt) => tf.tensor(dt))
       window.diceTensors = diceTensors
       const patchStack = []
-      // var answerIndices
-      let originalGroup
 
       const runData = async (aTensor) => {
         const resized = tf.image.resizeNearestNeighbor(aTensor, [
@@ -42,6 +40,7 @@
       window.showOne = showOne
 
       const buildDiceImage = async (config = {}) => {
+        document.getElementById('adder').disabled = true
         const tColumns = []
         for (let y = 0; y < numDice; y++) {
           const tRow = []
@@ -51,13 +50,14 @@
             const curAnswer = window.answerIndices[curIndex]
             tRow.push(diceTensors[curAnswer])
             if (config.xdie - 1 === x && config.ydie - 1 === y) {
-              const selectedTensor = tf.tensor(originalGroup[curIndex])
+              const selectedTensor = tf.tensor(window.originalGroup[curIndex])
               showOne(selectedTensor, 'selected')
               showOne(selectedTensor, 'overlay1')
               showOne(selectedTensor, 'overlay3')
               showOne(diceTensors[curAnswer], 'predicted')
               showOne(diceTensors[curAnswer], 'overlay2')
               window.overrideIndex = curIndex
+              window.overrideDieIndex = curAnswer
               if (curAnswer < 9) {
                 changePrimary(0)
               } else {
@@ -78,6 +78,7 @@
         const diceConstruct = tf.concat(tColumns)
         await showOne(diceConstruct)
       }
+      window.buildDiceImage = buildDiceImage
 
       const figureResults = (model) => {
         tf.tidy(() => {
@@ -90,7 +91,7 @@
           console.log('Predicted shape ', answers.shape)
           const { indices } = tf.topk(answers)
           window.answerIndices = indices.dataSync()
-          originalGroup = imageGroup.div(255).arraySync()
+          window.originalGroup = imageGroup.div(255).arraySync()
 
           const tColumns = []
           for (let y = 0; y < numDice; y++) {
@@ -98,7 +99,7 @@
             const rRow = []
             for (let x = 0; x < numDice; x++) {
               const curIndex = y * numDice + x
-              rRow.push(originalGroup[curIndex])
+              rRow.push(window.originalGroup[curIndex])
               rRow.push(tf.zeros([12, 1, 1]))
             }
             const regroupRow = tf.concat(rRow, 1)
@@ -209,20 +210,36 @@
       <div id="pipdiv" style="flex: 1">
         <h4>Override Pips</h4>
         <div style="flex-direction: row">
-          <button id="one" class="diveride" onclick="setDie(0)"><span>⚀</span></button>
-          <button id="two" class="diveride" onclick="setDie(2)"><span>⚁</span></button>
-          <button id="twor" class="diveride" onclick="setDie(1)"><span class="rot">⚁</span></button>
-          <button id="three" class="diveride" onclick="setDie(4)"><span>⚂</span></button>
-          <button id="threer" class="diveride" onclick="setDie(3)">
+          <button id="one" class="diveride" onclick="setDie(0)">
+            <span>⚀</span>
+          </button>
+          <button id="two" class="diveride" onclick="setDie(1)">
+            <span>⚁</span>
+          </button>
+          <button id="twor" class="diveride" onclick="setDie(2)">
+            <span class="rot">⚁</span>
+          </button>
+          <button id="three" class="diveride" onclick="setDie(3)">
+            <span>⚂</span>
+          </button>
+          <button id="threer" class="diveride" onclick="setDie(4)">
             <span class="rot">⚂</span>
           </button>
-          <button id="four" class="diveride" onclick="setDie(5)"><span>⚃</span></button>
-          <button id="five" class="diveride" onclick="setDie(6)"><span>⚄</span></button>
-          <button id="six" class="diveride" onclick="setDie(7)"><span>⚅</span></button>
-          <button id="sixr" class="diveride" onclick="setDie(8)"><span class="rot">⚅</span></button>
+          <button id="four" class="diveride" onclick="setDie(5)">
+            <span>⚃</span>
+          </button>
+          <button id="five" class="diveride" onclick="setDie(6)">
+            <span>⚄</span>
+          </button>
+          <button id="six" class="diveride" onclick="setDie(7)">
+            <span>⚅</span>
+          </button>
+          <button id="sixr" class="diveride" onclick="setDie(8)">
+            <span class="rot">⚅</span>
+          </button>
         </div>
       </div>
-      <div style="flex: 1;">
+      <div style="flex: 1">
         <h4>Override Overlayed</h4>
         <canvas
           id="overlay3"
@@ -231,21 +248,35 @@
         ></canvas>
         <canvas id="overlay4" class="democanv"></canvas>
       </div>
-      <hr/>
+      <div style="flex: 1">
+        <h4>Add Data</h4>
+        <button id="adder" onclick="addDataPoint()">Add Adjusted</button>
+      </div>
+      <hr />
     </div>
     <script>
+      function addDataPoint() {
+        window.answerIndices[window.overrideIndex] = window.overrideDieIndex
+        window.buildDiceImage()
+        console.log('ran')
+      }
       function setDie(idx) {
-        fullIdx = idx + (window.primarySelect * 9)
+        fullIdx = idx + window.primarySelect * 9
         console.log(fullIdx)
+        window.overrideDieIndex = fullIdx
         window.showOne(window.diceTensors[fullIdx], 'overlay4')
+        document.getElementById('adder').disabled = false
       }
 
       function changePrimary(newPrimary) {
         const activeDiv = document.getElementById('activeColor')
         const diceContainer = document.getElementById('pipdiv')
         let curAnswer = window.answerIndices[window.overrideIndex]
-        if ((window.primarySelect !== null) && (window.primarySelect !== newPrimary)) {
-          curAnswer = (curAnswer + 9) % 18  
+        if (
+          window.primarySelect !== null &&
+          window.primarySelect !== newPrimary
+        ) {
+          curAnswer = (curAnswer + 9) % 18
         }
         // Draw die in overlay
         window.showOne(window.diceTensors[curAnswer], 'overlay4')
@@ -258,7 +289,6 @@
           activeDiv.className = 'dark'
           diceContainer.className = 'dark'
         }
-        
       }
     </script>
   </body>
