@@ -9,12 +9,11 @@
       const imgURL = '/ir.png'
       const numDice = 19
       const preSize = numDice * 10
-      let primarySelect = 1
-      let overrideIndex = null
 
       const diceTensors = diceData.map((dt) => tf.tensor(dt))
+      window.diceTensors = diceTensors
       const patchStack = []
-      let answerIndices
+      // var answerIndices
       let originalGroup
 
       const runData = async (aTensor) => {
@@ -40,6 +39,7 @@
         const can = document.getElementById(id)
         await tf.browser.toPixels(im, can)
       }
+      window.showOne = showOne
 
       const buildDiceImage = async (config = {}) => {
         const tColumns = []
@@ -48,7 +48,7 @@
           const rRow = []
           for (let x = 0; x < numDice; x++) {
             const curIndex = y * numDice + x
-            const curAnswer = answerIndices[curIndex]
+            const curAnswer = window.answerIndices[curIndex]
             tRow.push(diceTensors[curAnswer])
             if (config.xdie - 1 === x && config.ydie - 1 === y) {
               const selectedTensor = tf.tensor(originalGroup[curIndex])
@@ -57,11 +57,11 @@
               showOne(selectedTensor, 'overlay3')
               showOne(diceTensors[curAnswer], 'predicted')
               showOne(diceTensors[curAnswer], 'overlay2')
-              showOne(diceTensors[curAnswer], 'overlay4')
+              window.overrideIndex = curIndex
               if (curAnswer < 9) {
-                changePrimary(1)
-              } else {
                 changePrimary(0)
+              } else {
+                changePrimary(1)
               }
 
               selectedTensor.dispose()
@@ -89,7 +89,7 @@
           const answers = model.predict(imageGroup)
           console.log('Predicted shape ', answers.shape)
           const { indices } = tf.topk(answers)
-          answerIndices = indices.dataSync()
+          window.answerIndices = indices.dataSync()
           originalGroup = imageGroup.div(255).arraySync()
 
           const tColumns = []
@@ -114,6 +114,7 @@
       }
 
       const identifySpot = async (event) => {
+        window.primarySelect = null
         const canvas = document.getElementById('display')
         const xspot = event.pageX - canvas.offsetLeft
         const yspot = event.pageY - canvas.offsetTop
@@ -197,9 +198,9 @@
       </div>
       <div style="flex: 1">
         <h4>Override Color</h4>
-        <button id="blackBack" onclick="changePrimary(0)">Black</button>
+        <button id="blackBack" onclick="changePrimary(1)">Black</button>
         /
-        <button id="whiteBack" onclick="changePrimary(1)">White</button>
+        <button id="whiteBack" onclick="changePrimary(0)">White</button>
         <div>
           <p>Active</p>
           <p id="activeColor">&nbsp;</p>
@@ -208,20 +209,20 @@
       <div id="pipdiv" style="flex: 1">
         <h4>Override Pips</h4>
         <div style="flex-direction: row">
-          <button id="one" class="diveride"><span>⚀</span></button>
-          <button id="two" class="diveride"><span>⚁</span></button>
-          <button id="twor" class="diveride"><span class="rot">⚁</span></button>
-          <button id="three" class="diveride"><span>⚂</span></button>
-          <button id="threer" class="diveride">
+          <button id="one" class="diveride" onclick="setDie(0)"><span>⚀</span></button>
+          <button id="two" class="diveride" onclick="setDie(2)"><span>⚁</span></button>
+          <button id="twor" class="diveride" onclick="setDie(1)"><span class="rot">⚁</span></button>
+          <button id="three" class="diveride" onclick="setDie(4)"><span>⚂</span></button>
+          <button id="threer" class="diveride" onclick="setDie(3)">
             <span class="rot">⚂</span>
           </button>
-          <button id="four" class="diveride"><span>⚃</span></button>
-          <button id="five" class="diveride"><span>⚄</span></button>
-          <button id="six" class="diveride"><span>⚅</span></button>
-          <button id="sixr" class="diveride"><span class="rot">⚅</span></button>
+          <button id="four" class="diveride" onclick="setDie(5)"><span>⚃</span></button>
+          <button id="five" class="diveride" onclick="setDie(6)"><span>⚄</span></button>
+          <button id="six" class="diveride" onclick="setDie(7)"><span>⚅</span></button>
+          <button id="sixr" class="diveride" onclick="setDie(8)"><span class="rot">⚅</span></button>
         </div>
       </div>
-      <div style="flex: 1">
+      <div style="flex: 1;">
         <h4>Override Overlayed</h4>
         <canvas
           id="overlay3"
@@ -230,22 +231,35 @@
         ></canvas>
         <canvas id="overlay4" class="democanv"></canvas>
       </div>
+      <hr/>
     </div>
     <script>
+      function setDie(idx) {
+        fullIdx = idx + (window.primarySelect * 9)
+        console.log(fullIdx)
+        window.showOne(window.diceTensors[fullIdx], 'overlay4')
+      }
+
       function changePrimary(newPrimary) {
-        primarySelect = newPrimary
         const activeDiv = document.getElementById('activeColor')
         const diceContainer = document.getElementById('pipdiv')
-        if (newPrimary === 1) {
+        let curAnswer = window.answerIndices[window.overrideIndex]
+        if ((window.primarySelect !== null) && (window.primarySelect !== newPrimary)) {
+          curAnswer = (curAnswer + 9) % 18  
+        }
+        // Draw die in overlay
+        window.showOne(window.diceTensors[curAnswer], 'overlay4')
+        window.primarySelect = newPrimary
+
+        if (newPrimary === 0) {
           activeDiv.className = 'light'
           diceContainer.className = 'light'
         } else {
           activeDiv.className = 'dark'
           diceContainer.className = 'dark'
         }
+        
       }
-
-      function changePips(newPip) {}
     </script>
   </body>
 </html>

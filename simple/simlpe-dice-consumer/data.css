@@ -21,6 +21,7 @@
 
 .flexy {
   display: flex;
+  padding-bottom: 100px;
 }
 
 .dicebox {
