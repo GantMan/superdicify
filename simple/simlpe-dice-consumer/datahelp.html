@@ -10,6 +10,29 @@
       const numDice = 19
       const preSize = numDice * 10
 
+      window.interData = {
+        0: [],
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: [],
+        7: [],
+        8: [],
+        9: [],
+        10: [],
+        11: [],
+        12: [],
+        13: [],
+        14: [],
+        15: [],
+        16: [],
+        17: [],
+      }
+
+      const modelVersion = 'dice-model-1'
+      window.modelVersion = modelVersion
       const diceTensors = diceData.map((dt) => tf.tensor(dt))
       window.diceTensors = diceTensors
       const patchStack = []
@@ -147,7 +170,7 @@
       const doStuff = async () => {
         // const modelPath =
         // 'https://s3.amazonaws.com/ir_public/ai/dice/dice-model.json'
-        const modelPath = '/dice-model-1/model.json'
+        const modelPath = `/${modelVersion}/model.json`
         const dModel = await tf.loadLayersModel(modelPath)
 
         const img = new Image()
@@ -178,7 +201,7 @@
     <h2>Dicify Result:</h2>
     <canvas id="regroup" class="overcanv"></canvas>
     <canvas id="display" class="overcanv half"></canvas>
-    <h2 class="labStart">Die Lab</h2>
+    <h2 class="labStart">Dice Lab</h2>
     <div class="flexy">
       <div style="flex: 1">
         <h4>Selected</h4>
@@ -252,13 +275,25 @@
         <h4>Add Data</h4>
         <button id="adder" onclick="addDataPoint()">Add Adjusted</button>
       </div>
-      <hr />
+    </div>
+    <hr />
+    <div>
+      <h3>New Data: <span id="newd">0</span></h3>
+    </div>
+    <div>
+      <button>Merge and Download New Dataset</button>
     </div>
     <script>
       function addDataPoint() {
+        // Add patch to intermediate dataset
+        window.interData[window.overrideDieIndex].push(
+          window.originalGroup[window.overrideIndex]
+        )
+        const counter = document.getElementById('newd')
+        counter.innerHTML = parseInt(counter.innerHTML) + 1
+        // Change example in composite
         window.answerIndices[window.overrideIndex] = window.overrideDieIndex
         window.buildDiceImage()
-        console.log('ran')
       }
       function setDie(idx) {
         fullIdx = idx + window.primarySelect * 9
