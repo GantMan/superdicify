@@ -281,8 +281,11 @@
       <h3>New Data: <span id="newd">0</span></h3>
     </div>
     <div>
-      <button>Merge and Download New Dataset</button>
+      <button onclick="mergeAndDownload()">
+        Merge and Download New Dataset
+      </button>
     </div>
+    <a id="downloadAnchorElem" style="display: none"></a>
     <script>
       function addDataPoint() {
         // Add patch to intermediate dataset
@@ -301,6 +304,30 @@
         window.overrideDieIndex = fullIdx
         window.showOne(window.diceTensors[fullIdx], 'overlay4')
         document.getElementById('adder').disabled = false
+      }
+
+      async function mergeAndDownload() {
+        console.log('Load old dataset')
+        const fetchData = await fetch(`${modelVersion}/dice_data.json`)
+        const theData = await fetchData.json()
+        console.log('Merge data')
+
+        for (let x = 0; x < 18; x++) {
+          if (x < 9) {
+            theData[x] = theData[x].concat(window.interData[x])
+          } else {
+            const inverted = `inverted${x % 9}`
+            theData[inverted] = theData[inverted].concat(window.interData[x])
+          }
+        }
+        console.log('Download data')
+        let dataStr =
+          'data:text/json;charset=utf-8,' +
+          encodeURIComponent(JSON.stringify(theData))
+        let dlAnchorElem = document.getElementById('downloadAnchorElem')
+        dlAnchorElem.setAttribute('href', dataStr)
+        dlAnchorElem.setAttribute('download', 'dice_data.json')
+        dlAnchorElem.click()
       }
 
       function changePrimary(newPrimary) {
