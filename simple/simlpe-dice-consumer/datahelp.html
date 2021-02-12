@@ -237,16 +237,16 @@
             <span>⚀</span>
           </button>
           <button id="two" class="diveride" onclick="setDie(1)">
-            <span>⚁</span>
+            <span id="twos">⚁</span>
           </button>
           <button id="twor" class="diveride" onclick="setDie(2)">
-            <span class="rot">⚁</span>
+            <span id="twors" class="rot">⚁</span>
           </button>
           <button id="three" class="diveride" onclick="setDie(3)">
-            <span>⚂</span>
+            <span id="threes">⚂</span>
           </button>
           <button id="threer" class="diveride" onclick="setDie(4)">
-            <span class="rot">⚂</span>
+            <span id="threers" class="rot">⚂</span>
           </button>
           <button id="four" class="diveride" onclick="setDie(5)">
             <span>⚃</span>
@@ -351,6 +351,19 @@
           activeDiv.className = 'dark'
           diceContainer.className = 'dark'
         }
+      }
+
+      // fix rotation on mac
+      const isMacLike = /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform);
+      if (isMacLike) {
+        const twos = document.getElementById('twos')
+        const twors = document.getElementById('twors')
+        const threes = document.getElementById('threes')
+        const threers = document.getElementById('threers')
+        twos.className = "rot"
+        twors.className = null
+        threes.className = "rot"
+        threers.className = null
       }
     </script>
   </body>
