@@ -2,8 +2,8 @@ import * as tf from '@tensorflow/tfjs-node'
 import { shuffleCombo } from './helper'
 
 const inputShape = [12, 12, 1]
-const epochs = 50
-const testSplit = 0.05
+const epochs = 100
+const testSplit = 0.001
 const diceData = require('./dice_data.json')
 
 function prepData() {
