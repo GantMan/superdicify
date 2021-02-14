@@ -1,8 +1,8 @@
 import * as tf from '@tensorflow/tfjs-node'
-import { shuffleCombo } from './helper'
+import { shuffleCombo, bestValidationSave } from './helper'
 
 const inputShape = [12, 12, 1]
-const epochs = 100
+const epochs = 40
 const testSplit = 0.001
 const diceData = require('./dice_data.json')
 
@@ -112,10 +112,12 @@ const trainModel = async (data) => {
     metrics: ['accuracy'],
   })
 
+  let best = 0
   await model.fit(data[0], data[1], {
     epochs,
     validationSplit: 0.1,
     shuffle: true,
+    callbacks: bestValidationSave(model, 'file://./dice-model', best),
   })
 
   console.log('Done Training')
@@ -133,7 +135,7 @@ async function makeModel() {
   const data = await prepData()
   const model = await trainModel(data)
   evaluateResults(model, data)
-  model.save('file://./dice-model')
+  model.save('file://./dice-model') // using best validation save
 }
 
 makeModel()

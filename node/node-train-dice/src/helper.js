@@ -18,3 +18,25 @@ export function shuffleCombo(array, array2) {
     array2[index] = temp2
   }
 }
+
+function printSign(val) {
+  console.log(`
+  ╔════════════╗
+  ║   SAVING   ║
+  ║   %${(val * 100).toFixed(2)}   ║
+  ╚════════════╝
+  `)
+}
+
+export async function bestValidationSave(model, savePath, best) {
+  return {
+    onEpochEnd: async (_epoch, logs) => {
+      console.log('here', logs.val_acc)
+      if (logs.val_acc > best) {
+        printSign(logs.val_acc)
+        model.save(savePath)
+        best = logs.val_acc
+      }
+    },
+  }
+}

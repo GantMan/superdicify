@@ -63,43 +63,47 @@
       window.showOne = showOne
 
       const buildDiceImage = async (config = {}) => {
-        document.getElementById('adder').disabled = true
-        const tColumns = []
-        for (let y = 0; y < numDice; y++) {
-          const tRow = []
-          const rRow = []
-          for (let x = 0; x < numDice; x++) {
-            const curIndex = y * numDice + x
-            const curAnswer = window.answerIndices[curIndex]
-            tRow.push(diceTensors[curAnswer])
-            if (config.xdie - 1 === x && config.ydie - 1 === y) {
-              const selectedTensor = tf.tensor(window.originalGroup[curIndex])
-              showOne(selectedTensor, 'selected')
-              showOne(selectedTensor, 'overlay1')
-              showOne(selectedTensor, 'overlay3')
-              showOne(diceTensors[curAnswer], 'predicted')
-              showOne(diceTensors[curAnswer], 'overlay2')
-              window.overrideIndex = curIndex
-              window.overrideDieIndex = curAnswer
-              if (curAnswer < 9) {
-                changePrimary(0)
-              } else {
-                changePrimary(1)
+        const diceConstruct = tf.tidy(() => {
+          document.getElementById('adder').disabled = true
+          const tColumns = []
+          for (let y = 0; y < numDice; y++) {
+            const tRow = []
+            const rRow = []
+            for (let x = 0; x < numDice; x++) {
+              const curIndex = y * numDice + x
+              const curAnswer = window.answerIndices[curIndex]
+              tRow.push(diceTensors[curAnswer])
+              if (config.xdie - 1 === x && config.ydie - 1 === y) {
+                const selectedTensor = tf.tensor(window.originalGroup[curIndex])
+                showOne(selectedTensor, 'selected')
+                showOne(selectedTensor, 'overlay1')
+                showOne(selectedTensor, 'overlay3')
+                showOne(diceTensors[curAnswer], 'predicted')
+                showOne(diceTensors[curAnswer], 'overlay2')
+                window.overrideIndex = curIndex
+                window.overrideDieIndex = curAnswer
+                if (curAnswer < 9) {
+                  changePrimary(0)
+                } else {
+                  changePrimary(1)
+                }
+
+                selectedTensor.dispose()
               }
-
-              selectedTensor.dispose()
+              // vertical lines
+              tRow.push(tf.zeros([12, 1]))
             }
-            // vertical lines
-            tRow.push(tf.zeros([12, 1]))
+            const oneRow = tf.concat(tRow, 1)
+            tColumns.push(oneRow)
+            // horizontal lines
+            tColumns.push(tf.zeros([1, oneRow.shape[1]]))
           }
-          const oneRow = tf.concat(tRow, 1)
-          tColumns.push(oneRow)
-          // horizontal lines
-          tColumns.push(tf.zeros([1, oneRow.shape[1]]))
-        }
 
-        const diceConstruct = tf.concat(tColumns)
+          const diceConstruct = tf.concat(tColumns)
+          return diceConstruct
+        })
         await showOne(diceConstruct)
+        diceConstruct.dispose()
       }
       window.buildDiceImage = buildDiceImage
 
